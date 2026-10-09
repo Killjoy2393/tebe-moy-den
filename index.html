@@ -159,6 +159,9 @@
     color: #fff;
     box-shadow: inset 0 0 40px rgba(0,0,0,.45);
   }
+  .quiz.revealed { animation: fadeUp .6s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .circle-hint { text-align: center; font-size: .88rem; color: var(--accent-dark); margin-top: 12px; }
   .quiz .q {
     text-align: center;
     font-weight: 600;
@@ -678,9 +681,13 @@ function bindQuiz(section) {
 }
 document.getElementById("modal-close").addEventListener("click", () => {
   document.getElementById("modal").classList.remove("open");
+  onQuizAnswered();
 });
 document.getElementById("modal").addEventListener("click", (e) => {
-  if (e.target.id === "modal") e.target.classList.remove("open");
+  if (e.target.id === "modal") {
+    e.target.classList.remove("open");
+    onQuizAnswered();
+  }
 });
 
 function buildNextButton(section, isLast) {
@@ -712,6 +719,13 @@ function revealNext() {
 
 /* ---- сборка секций по порядку ---- */
 const builders = [];
+let circleSection = null;
+
+function onQuizAnswered() {
+  if (circleSection && !circleSection.querySelector(".next-zone")) {
+    buildNextButton(circleSection, false);
+  }
+}
 
 if (CONTENT.introText) builders.push(() =>
   addSection(`<div class="card hero">
@@ -743,7 +757,8 @@ if (CONTENT.circleVideo) builders.push(() => {
     <div class="circle-wrap"><div class="circle-frame">
     <video controls playsinline preload="metadata" src="${CONTENT.circleVideo}"></video>
     </div></div>
-    <div class="quiz">
+    <p class="circle-hint">досмотри до конца - будет вопрос на миллион</p>
+    <div class="quiz" style="display:none">
       <div class="q">${CONTENT.quiz.question}</div>
       <div class="opts">
         ${CONTENT.quiz.options.map((o, i) => `<button class="opt"><b>${letters[i]}:</b>${o}</button>`).join("")}
@@ -754,6 +769,16 @@ if (CONTENT.circleVideo) builders.push(() => {
   </div>`);
   bindVideos(s);
   bindQuiz(s);
+  circleSection = s;
+  const video = s.querySelector("video");
+  const quiz = s.querySelector(".quiz");
+  const hint = s.querySelector(".circle-hint");
+  video.addEventListener("ended", () => {
+    hint.style.display = "none";
+    quiz.style.display = "block";
+    quiz.classList.add("revealed");
+    setTimeout(() => quiz.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+  });
 });
 
 if (CONTENT.audio2.length) builders.push(() => {
@@ -780,7 +805,7 @@ if (CONTENT.playlistUrl) builders.push(() => {
 });
 
 builders.forEach(b => b());
-sections.forEach((s, i) => buildNextButton(s, i === sections.length - 1));
+sections.forEach((s, i) => { if (s !== circleSection) buildNextButton(s, i === sections.length - 1); });
 revealNext();
 </script>
 </body>
